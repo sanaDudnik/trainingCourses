@@ -1,0 +1,146 @@
+plugins {
+    id 'java'
+    id 'java-library'
+    id 'idea'
+}
+apply plugin: 'java'
+
+def ENV = System.getenv()
+def hybrisBin = "$System.env.HYBRIS_BIN_DIR"
+println "1.hybrisBin: ${hybrisBin}"
+
+def platform = "$System.env.HYBRIS_BIN_DIR/platform"
+println "platform: ${platform}"
+
+def antFile = "$System.env.ANT_HOME/bin"
+def ant = new File("${antFile}/ant.bat")
+println "2.ant: ${antFile}"
+println "2.ant: ${ant}"
+
+println "3.projectDir: ${projectDir}"
+
+def dirBuild = "${projectDir}/build"
+println "4.dirBuild: ${dirBuild}"
+
+def dirClasses = "${projectDir}/classes"
+println "5.dirClasses: ${dirClasses}"
+
+def dirGenSrc = "${projectDir}/genSrc"
+println "6.dirGenSrc: ${dirGenSrc}"
+
+group = 'de.hybris.platform.trainingCourses'
+description = 'SAP Hybris project template'
+version = '1905.0'
+
+repositories {
+    jcenter()
+    mavenCentral()
+}
+
+compileJava {
+    sourceCompatibility = 11.1
+    targetCompatibility = 11.1
+}
+
+task cleanGeneratedDirs(type: Delete, description: "Delete dir") {
+    doLast {
+        println "cleanGeneratedDirs ..."
+        file(dirGenSrc).list().each {
+            f -> delete "${dirGenSrc}/${f}"
+        }
+        file(dirClasses).list().each {
+            f -> delete "${dirClasses}/${f}"
+        }
+        file(dirBuild).list().each {
+            f -> delete "${dirBuild}/${f}"
+        }
+    }
+    /*delete "../../../data"*/
+    /*delete "../../log"*/
+    /*delete "../../../roles"*/
+    delete "../../../temp"
+/*
+    delete dirClasses
+    delete dirGenSrc
+    delete dirBuild
+*/
+    println "cleanGeneratedDirs end!"
+}
+
+/*
+task cleanConfig(type: Delete) {
+    delete "../../../config"
+}
+*/
+
+task updateMavenDependencies(type: Exec,dependsOn: cleanGeneratedDirs) {
+    workingDir "${projectDir}"
+    executable ant
+    args 'updateMavenDependencies'
+}
+
+
+task buildByAnt(type: Exec) {
+    workingDir "${projectDir}"
+    executable ant
+    args 'build'
+}
+
+
+task antRun(type: Exec,dependsOn: updateMavenDependencies) {
+    println "Starting cleaning platform..."
+
+    workingDir "${projectDir}"
+    executable ant
+    args 'clean'
+
+    println "Cleaning platform..."
+
+    workingDir "${projectDir}"
+    executable ant
+    args 'all'
+
+    println "Executed command ant clean all"
+    println "Start ant..."
+    workingDir "${projectDir}"
+    executable ant
+    println "Finished ant..."
+}
+
+
+task run() {
+    doLast {
+        exec {
+            workingDir "${platform}"
+            executable "hybrisserver.bat"
+        }
+    }
+}
+/*
+
+task deploy(type:Exec){
+               executable antFile
+               args 'deploy'
+               workingDir projectDir 
+}
+*/
+
+
+task sourceJar(type: Jar, dependsOn: 'buildByAnt') {
+    baseName '${project.name}'
+    from 'classes'
+    from 'resources'
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes 'Main-Class': 'de.hybris.platform.trainingCourses.TrainingCoursesStandalone'
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+wrapper {
+    gradleVersion = '4.4'
+    distributionUrl = distributionUrl.replace("bin", "all")
+}
