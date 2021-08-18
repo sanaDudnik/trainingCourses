@@ -116,18 +116,9 @@ task run() {
         }
     }
 }
-/*
 
-task deploy(type:Exec){
-               executable antFile
-               args 'deploy'
-               workingDir projectDir 
-}
-*/
-
-
-task sourceJar(type: Jar, dependsOn: 'buildByAnt') {
-    baseName '${project.name}'
+task sourceJar(type: Jar, dependsOn: antRun) {
+    baseName 'trainingCourses'
     from 'classes'
     from 'resources'
 
@@ -138,6 +129,12 @@ task sourceJar(type: Jar, dependsOn: 'buildByAnt') {
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
+}
+
+task deploy(type:Exec, dependsOn: sourceJar){
+               executable antFile
+               args 'deploy'
+               workingDir projectDir
 }
 
 wrapper {
